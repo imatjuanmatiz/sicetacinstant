@@ -81,7 +81,7 @@ export default function Page() {
 
   return (
     <main style={{ maxWidth: 860, margin: "40px auto", padding: 16, fontFamily: "system-ui" }}>
-      <h1>Sicetac Lab</h1>
+      <h1>SICETAC LAB: CALCULA SICETAC AL INSTANTE DE RUTAS EXISTENTES AQUI</h1>
       <p>Calcula una ruta con origen/destino separados y parametros editables.</p>
       <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
         <input
