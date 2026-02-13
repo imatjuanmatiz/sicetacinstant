@@ -81,8 +81,8 @@ export default function Page() {
 
   return (
     <main style={{ maxWidth: 860, margin: "40px auto", padding: 16, fontFamily: "system-ui" }}>
-      <h1>SICETAC LAB: CALCULA SICETAC AL INSTANTE DE RUTAS EXISTENTES AQUI</h1>
-      <p>Calcula una ruta con origen/destino separados y parametros editables.</p>
+      <h1>SICETAC AL INSTANTE:</h1>
+      <p>Proyecto: SICETAC-LAB : Calcula la ruta con los valores de SICETAC con origen/destino separados y parametros editables.</p>
       <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
         <input
           name="origen"
@@ -185,7 +185,7 @@ export default function Page() {
       ) : null}
 
       <p style={{ marginTop: 16, fontSize: 12, color: "#666" }}>
-        Defaults: vehiculo C3S3 y carroceria GENERAL. Esta version permite cambiar ambos valores.
+        Defaults: Cálculos con 2 Horas - 4 Horas y 8 Horas logìsticas, los parametros pueden cambiarse selecionando el vehículo y carroceria 
       </p>
       <footer
         style={{
