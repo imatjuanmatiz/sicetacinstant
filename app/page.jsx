@@ -125,6 +125,12 @@ export default function Page() {
             <a className="topbar-link" href="https://sicealinstante.vercel.app/" target="_blank" rel="noreferrer">
               Abrir version publica
             </a>
+            <a className="topbar-link" href="https://www.eldatologistico.com/" target="_blank" rel="noreferrer">
+              El Dato Logístico
+            </a>
+            <a className="topbar-link" href="https://chatgpt.com/g/g-69bb160a06708191a08c3f7177b17306-el-dato-logistico" target="_blank" rel="noreferrer">
+              GPT El Dato Logístico
+            </a>
           </div>
         </header>
 
@@ -143,6 +149,12 @@ export default function Page() {
               </a>
               <a className="hero-link" href="https://atiemppo.com/#labs" target="_blank" rel="noreferrer">
                 Ver laboratorios Atiemppo
+              </a>
+              <a className="hero-link" href="https://www.eldatologistico.com/" target="_blank" rel="noreferrer">
+                Leer el newsletter
+              </a>
+              <a className="hero-link" href="https://wa.me/57313450394?text=Hola%2C%20quiero%20consultar%20SICETAC%20al%20Instante%20por%20WhatsApp.%20Escribe%20asi%3A%20origen%20a%20destino" target="_blank" rel="noreferrer">
+                Consultar por WhatsApp
               </a>
             </div>
             <div className="hero-metrics">
@@ -334,8 +346,16 @@ export default function Page() {
                     vehículo y carrocería.
                   </p>
                 </div>
+                <div className="section-card">
+                  <strong>Más accesos</strong>
+                  <p className="support-copy">
+                    También puedes abrir el <a href="https://chatgpt.com/g/g-69bb160a06708191a08c3f7177b17306-el-dato-logistico" target="_blank" rel="noreferrer">GPT de El Dato Logístico</a> o escribir al WhatsApp de SICETAC al Instante con este formato:
+                    <code> origen a destino </code>. No olvides poner la <code>a</code>.
+                  </p>
+                </div>
               </div>
               <div className="footer-bar">
+                <div>Conectado con <a href="https://atiemppo.com/" target="_blank" rel="noreferrer">atiemppo.com</a> y <a href="https://www.eldatologistico.com/" target="_blank" rel="noreferrer">El Dato Logístico</a>.</div>
                 <div>Fuente: Modelo SICETAC · Mintransporte Colombia · Desarrollado por Atiemppo · Febrero 2026.</div>
               </div>
             </section>
