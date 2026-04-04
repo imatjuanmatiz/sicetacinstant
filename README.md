@@ -26,10 +26,27 @@ Body (JSON):
   "origen": "Bogotá",
   "destino": "Barranquilla",
   "vehiculo": "C3S3",
-  "carroceria": "GENERAL",
+  "carroceria": "General - Estacas",
   "resumen": true
 }
 ```
+
+Opciones canonicas de `carroceria`:
+
+- `General - Estacas`
+- `General - Furgon`
+- `General - Estibas`
+- `General - Plataforma`
+- `Portacontenedores`
+- `Furgon Refrigerado`
+- `Granel Solido - Estacas`
+- `Granel Solido - Furgon`
+- `Granel Solido - Volco`
+- `Granel Solido - Estibas`
+- `Granel Solido - Plataforma`
+- `Granel Liquido - Tanque`
+
+El proxy tambien acepta alias heredados como `GENERAL`, `ESTIBA` o `FURGON GENERAL` y los normaliza antes de consultar el backend.
 
 Respuesta:
 ```json
