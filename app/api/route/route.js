@@ -1,21 +1,10 @@
+import { BODY_TYPE_OPTIONS, normalizeBodyType, VEHICLE_OPTIONS } from "../../lib/sicetac-options";
+
 const DEFAULT_API_URL = "https://sicetac-api-mcp.onrender.com/consulta";
 const CAPTURE_WEBHOOK_URL = (process.env.ROUTE_CAPTURE_WEBHOOK_URL || "").trim();
 const CAPTURE_WEBHOOK_SECRET = (process.env.CAPTURE_WEBHOOK_SECRET || "").trim();
-const ALLOWED_VEHICLES = new Set(["C278", "C289", "C2910", "C2M10", "C3", "C2S2", "C2S3", "C3S2", "C3S3", "V3"]);
-const ALLOWED_BODY_TYPES = new Set([
-  "GENERAL",
-  "ESTIBA",
-  "PLATAFORMA",
-  "ESTACAS GRANEL SOLIDO",
-  "ESTIBAS GRANEL SOLIDO",
-  "PLATAFORMA GRANEL SOLIDO",
-  "FURGON GENERAL",
-  "FURGON GRANEL SOLIDO",
-  "FURGON REFRIGERADO",
-  "PORTACONTENEDORES",
-  "TANQUE - GRANEL LIQUIDO",
-  "VOLCO",
-]);
+const ALLOWED_VEHICLES = new Set(VEHICLE_OPTIONS);
+const ALLOWED_BODY_TYPES = new Set(BODY_TYPE_OPTIONS);
 
 function resolveApiUrl() {
   const configured = (process.env.SICETAC_API_URL || DEFAULT_API_URL).trim();
@@ -91,7 +80,7 @@ async function parseInput(req) {
     origen,
     destino,
     vehiculo: cleanText(body?.vehiculo) || "C3S3",
-    carroceria: cleanText(body?.carroceria) || "GENERAL",
+    carroceria: normalizeBodyType(cleanText(body?.carroceria)),
     resumen: parseBoolean(body?.resumen, true),
     raw_message: message || null,
   };
@@ -270,8 +259,7 @@ export async function POST(req) {
   if (!ALLOWED_BODY_TYPES.has(input.carroceria)) {
     return Response.json(
       {
-        error:
-          "Tipo de carroceria invalido. Valores permitidos: GENERAL, ESTIBA, PLATAFORMA, ESTACAS GRANEL SOLIDO, ESTIBAS GRANEL SOLIDO, PLATAFORMA GRANEL SOLIDO, FURGON GENERAL, FURGON GRANEL SOLIDO, FURGON REFRIGERADO, PORTACONTENEDORES, TANQUE - GRANEL LIQUIDO, VOLCO.",
+        error: `Tipo de carroceria invalido. Valores permitidos: ${BODY_TYPE_OPTIONS.join(", ")}.`,
       },
       { status: 400 }
     );

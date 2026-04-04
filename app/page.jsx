@@ -2,22 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
-
-const VEHICLE_OPTIONS = ["C278", "C289", "C2910", "C2M10", "C3", "C2S2", "C2S3", "C3S2", "C3S3", "V3"];
-const CARROCERIA_OPTIONS = [
-  "GENERAL",
-  "ESTIBA",
-  "PLATAFORMA",
-  "ESTACAS GRANEL SOLIDO",
-  "ESTIBAS GRANEL SOLIDO",
-  "PLATAFORMA GRANEL SOLIDO",
-  "FURGON GENERAL",
-  "FURGON GRANEL SOLIDO",
-  "FURGON REFRIGERADO",
-  "PORTACONTENEDORES",
-  "TANQUE - GRANEL LIQUIDO",
-  "VOLCO",
-];
+import { BODY_TYPE_OPTIONS, VEHICLE_OPTIONS } from "./lib/sicetac-options";
 
 function RouteCard({ route, index, total }) {
   const totalesPorHoras = route.totales_por_horas_cop || route.totales_por_horas;
@@ -67,7 +52,7 @@ export default function Page() {
   const [origen, setOrigen] = useState("");
   const [destino, setDestino] = useState("");
   const [vehiculo, setVehiculo] = useState("C3S3");
-  const [carroceria, setCarroceria] = useState("GENERAL");
+  const [carroceria, setCarroceria] = useState(BODY_TYPE_OPTIONS[0]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
@@ -244,7 +229,7 @@ export default function Page() {
                   Ajusta el tipo de carga para hacer una consulta más representativa del caso de uso.
                 </p>
                 <div className="carroceria-grid">
-                  {CARROCERIA_OPTIONS.map((c) => (
+                  {BODY_TYPE_OPTIONS.map((c) => (
                     <button
                       key={c}
                       type="button"
