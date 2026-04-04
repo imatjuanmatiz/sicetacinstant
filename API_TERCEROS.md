@@ -27,7 +27,7 @@ URL completa:
   "origen": "Bogotá",
   "destino": "Medellín",
   "vehiculo": "C3S3",
-  "carroceria": "GENERAL",
+  "carroceria": "General - Estacas",
   "resumen": true
 }
 ```
@@ -37,11 +37,28 @@ URL completa:
 - `origen` (string, requerido)
 - `destino` (string, requerido)
 - `vehiculo` (string, opcional, default recomendado: `C3S3`)
-- `carroceria` (string, opcional, default recomendado: `GENERAL`)
+- `carroceria` (string, opcional, default recomendado: `General - Estacas`)
 - `mes` (number, opcional, formato `YYYYMM`)
 - `resumen` (boolean, opcional)
   - `true`: salida compacta con `H2/H4/H8`
   - `false`: salida detallada del modelo
+
+Valores canonicos recomendados para `carroceria`:
+
+- `General - Estacas`
+- `General - Furgon`
+- `General - Estibas`
+- `General - Plataforma`
+- `Portacontenedores`
+- `Furgon Refrigerado`
+- `Granel Solido - Estacas`
+- `Granel Solido - Furgon`
+- `Granel Solido - Volco`
+- `Granel Solido - Estibas`
+- `Granel Solido - Plataforma`
+- `Granel Liquido - Tanque`
+
+El proxy de `sicetacinstant` tambien tolera alias viejos como `GENERAL`, `ESTIBA`, `PLATAFORMA`, `FURGON GENERAL` o `TANQUE - GRANEL LIQUIDO` y los normaliza antes de llamar al backend.
 
 ## 5) Ejemplo cURL (resumen)
 
@@ -52,7 +69,7 @@ curl -s -X POST "https://sicetac-api-mcp.onrender.com/consulta" \
     "origen":"Bogotá",
     "destino":"Medellín",
     "vehiculo":"C3S3",
-    "carroceria":"GENERAL",
+    "carroceria":"General - Estacas",
     "resumen":true
   }'
 ```
@@ -69,7 +86,7 @@ Ejemplo esperado:
   "destino": "Medellín",
   "configuracion": "C3S3",
   "mes": 202602,
-  "carroceria": "GENERAL",
+  "carroceria": "General - Estacas",
   "modo_viaje": "CARGADO",
   "variantes": [
     {
