@@ -223,6 +223,48 @@ function buildDiagnostics(data, requestPayload) {
   };
 }
 
+async function parseBackendResponse(res) {
+  const contentType = (res.headers.get("content-type") || "").toLowerCase();
+  const rawText = await res.text();
+
+  if (contentType.includes("application/json")) {
+    try {
+      return {
+        ok: true,
+        data: rawText ? JSON.parse(rawText) : {},
+        rawText,
+      };
+    } catch {
+      return {
+        ok: false,
+        error: {
+          error: "El backend devolvio JSON invalido.",
+          backend_status: res.status,
+          backend_content_type: contentType,
+        },
+      };
+    }
+  }
+
+  try {
+    return {
+      ok: true,
+      data: rawText ? JSON.parse(rawText) : {},
+      rawText,
+    };
+  } catch {
+    return {
+      ok: false,
+      error: {
+        error: "El backend SICETAC no devolvio JSON. Probablemente esta en error temporal.",
+        backend_status: res.status,
+        backend_content_type: contentType || "desconocido",
+        backend_preview: rawText.slice(0, 240),
+      },
+    };
+  }
+}
+
 async function captureRouteQuery(payload) {
   if (!CAPTURE_WEBHOOK_URL) return;
   try {
@@ -279,9 +321,14 @@ export async function POST(req) {
     body: JSON.stringify(requestPayload),
   });
 
-  const data = await res.json();
+  const parsed = await parseBackendResponse(res);
+  if (!parsed.ok) {
+    return Response.json(parsed.error, { status: 502 });
+  }
+
+  const data = parsed.data;
   if (!res.ok) {
-    return Response.json(data, { status: res.status });
+    return Response.json(data, { status: res.status || 502 });
   }
 
   const responsePayload = {
