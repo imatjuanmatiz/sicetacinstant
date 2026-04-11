@@ -45,6 +45,21 @@ type LeadPayload = {
     market_reference_total?: number;
     market_reference_bucket?: string;
   };
+  parse?: {
+    original_text?: string;
+    cleaned_text?: string;
+    matched_intent_pattern?: string;
+    route_found?: boolean;
+    route?: {
+      origen?: string;
+      destino?: string;
+    };
+    municipios_detected?: Array<{
+      codigo_dane?: string;
+      nombre_oficial?: string;
+      departamento?: string;
+    }>;
+  };
 };
 
 function json(body: unknown, status = 200) {
@@ -190,6 +205,32 @@ Deno.serve(async (req) => {
     if (queryInsertError) {
       return json({ error: "query_insert_failed", detail: queryInsertError.message }, 500);
     }
+  }
+
+  const messagePatternRecord = {
+    phone,
+    event: (body.event || "unknown").trim(),
+    message_text: (body.message || body.parse?.original_text || "").trim(),
+    cleaned_text: (body.parse?.cleaned_text || "").trim() || null,
+    matched_intent_pattern: (body.parse?.matched_intent_pattern || "").trim() || null,
+    parse_success: Boolean(body.parse?.route_found),
+    detected_origin: (body.route?.origen || body.parse?.route?.origen || "").trim() || null,
+    detected_destination: (body.route?.destino || body.parse?.route?.destino || "").trim() || null,
+    detected_vehicle: (body.route?.vehiculo || "").trim() || null,
+    detected_body_type: (body.route?.carroceria || "").trim() || null,
+    detected_hours: body.query?.requested_hours ?? null,
+    detected_tons: body.query?.requested_tons ?? null,
+    municipios_detected: body.parse?.municipios_detected || [],
+    payload: body,
+    created_at: nowTs,
+  };
+
+  const { error: patternInsertError } = await supabase
+    .from("whatsapp_message_patterns")
+    .insert(messagePatternRecord);
+
+  if (patternInsertError) {
+    return json({ error: "pattern_insert_failed", detail: patternInsertError.message }, 500);
   }
 
   return json({ ok: true });
