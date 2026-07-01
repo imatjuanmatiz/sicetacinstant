@@ -82,6 +82,7 @@ async function parseInput(req) {
     vehiculo: cleanText(body?.vehiculo) || "C3S3",
     carroceria: normalizeBodyType(cleanText(body?.carroceria)),
     resumen: parseBoolean(body?.resumen, true),
+    peajes: parseBoolean(body?.peajes, true),
     raw_message: message || null,
   };
 }
@@ -110,10 +111,11 @@ function fmtCOP(value) {
 function summarizeVariant(variant) {
   const result = variant?.RESULTADO || variant?.resultado || {};
   const totalesPorHoras = variant?.totales || result?.totales || null;
+  const peajesResumen = variant?.peajes_resumen || result?.peajes_resumen || {};
   const totalViaje = asNumber(
     result?.total_viaje ?? variant?.total_viaje ?? (totalesPorHoras && (totalesPorHoras.H8 ?? totalesPorHoras.h8))
   );
-  const peajes = asNumber(result?.peajes ?? variant?.peajes);
+  const peajes = asNumber(peajesResumen?.total_peajes ?? result?.peajes ?? variant?.peajes);
   const totalesPorHorasCop =
     totalesPorHoras && typeof totalesPorHoras === "object"
       ? Object.fromEntries(Object.entries(totalesPorHoras).map(([k, v]) => [k, fmtCOP(v) || v]))
@@ -156,11 +158,16 @@ function buildNormalized(data, input, requestedRoute) {
       data?.total_viaje ??
       (singleRouteTotales && (singleRouteTotales.H8 ?? singleRouteTotales.h8))
   );
-  const singleRoutePeajes = asNumber(base?.peajes ?? data?.peajes);
+  const singleRoutePeajes = asNumber(
+    data?.peajes_resumen?.total_peajes ??
+      base?.peajes_resumen?.total_peajes ??
+      base?.peajes ??
+      data?.peajes
+  );
   const singleRoute = base
     ? {
-        nombre: data?.NOMBRE_SICE || "Ruta principal",
-        id_sice: data?.ID_SICE ?? null,
+        nombre: data?.NOMBRE_SICE || data?.detalle_lookup?.nombre_sice || "Ruta principal",
+        id_sice: data?.ID_SICE ?? data?.detalle_lookup?.rutasid ?? null,
         total_viaje: singleRouteTotal,
         total_viaje_cop: fmtCOP(singleRouteTotal),
         peajes: singleRoutePeajes,
@@ -313,6 +320,7 @@ export async function POST(req) {
     vehiculo: input.vehiculo,
     carroceria: input.carroceria,
     resumen: input.resumen,
+    peajes: input.peajes,
   };
 
   const res = await fetch(resolveApiUrl(), {

@@ -73,6 +73,7 @@ export default function Page() {
           vehiculo,
           carroceria,
           resumen: true,
+          peajes: true,
         }),
       });
       const data = await res.json();
@@ -172,7 +173,7 @@ export default function Page() {
               </li>
               <li>
                 <strong>3. Lee el resultado</strong>
-                Evalua costo total, peajes, horas logistic as y trazabilidad de la respuesta.
+                Evalua costo total, peajes, horas logísticas y trazabilidad de la respuesta.
               </li>
             </ul>
           </aside>
