@@ -5,6 +5,8 @@ const CAPTURE_WEBHOOK_URL = (process.env.ROUTE_CAPTURE_WEBHOOK_URL || "").trim()
 const CAPTURE_WEBHOOK_SECRET = (process.env.CAPTURE_WEBHOOK_SECRET || "").trim();
 const ALLOWED_VEHICLES = new Set(VEHICLE_OPTIONS);
 const ALLOWED_BODY_TYPES = new Set(BODY_TYPE_OPTIONS);
+const CONTAINER_TYPES = new Set(["CARGADO", "VACIO"]);
+const TRIP_MODES = new Set(["CARGADO", "VACIO"]);
 
 function resolveApiUrl() {
   const configured = (process.env.SICETAC_API_URL || DEFAULT_API_URL).trim();
@@ -81,6 +83,12 @@ async function parseInput(req) {
     destino,
     vehiculo: cleanText(body?.vehiculo) || "C3S3",
     carroceria: normalizeBodyType(cleanText(body?.carroceria)),
+    modo_viaje: cleanText(body?.modo_viaje).toUpperCase() || "CARGADO",
+    tipo_contenedor: cleanText(body?.tipo_contenedor).toUpperCase() || null,
+    viaje_redondo: parseBoolean(body?.viaje_redondo, false),
+    tipo_contenedor_regreso: cleanText(body?.tipo_contenedor_regreso).toUpperCase() || null,
+    rutasid_ida: cleanText(body?.rutasid_ida) || null,
+    rutasid_regreso: cleanText(body?.rutasid_regreso) || null,
     resumen: parseBoolean(body?.resumen, true),
     peajes: parseBoolean(body?.peajes, true),
     raw_message: message || null,
@@ -137,7 +145,65 @@ function summarizeVariant(variant) {
   };
 }
 
+function routeOptions(leg) {
+  return Array.isArray(leg?.variantes)
+    ? leg.variantes
+        .map((variant) => ({
+          id: String(variant?.RUTASID ?? variant?.ID_SICE ?? ""),
+          nombre: variant?.NOMBRE_SICE || variant?.nombre_sice || "Ruta oficial",
+        }))
+        .filter((variant) => variant.id)
+    : [];
+}
+
 function buildNormalized(data, input, requestedRoute) {
+  if (data?.ida && data?.regreso && String(data?.tipo_consulta || "").startsWith("VIAJE_REDONDO")) {
+    const ida = data.ida;
+    const regreso = data.regreso;
+    const totales = data?.totales && typeof data.totales === "object" ? data.totales : null;
+    const selectionRequired = Boolean(data?.requiere_seleccion_ruta);
+    const routes = selectionRequired
+      ? []
+      : [
+          {
+            nombre: "Ida cargada + regreso con contenedor vacío",
+            total_viaje: asNumber(totales?.H8),
+            total_viaje_cop: fmtCOP(totales?.H8),
+            peajes: null,
+            peajes_cop: null,
+            totales_por_horas: totales,
+            totales_por_horas_cop: totales
+              ? Object.fromEntries(Object.entries(totales).map(([k, v]) => [k, fmtCOP(v) || v]))
+              : null,
+          },
+        ];
+    const lines = [
+      `Viaje redondo: ${ida?.origen || requestedRoute?.origen || "N/A"} -> ${ida?.destino || requestedRoute?.destino || "N/A"}`,
+      "Ida: contenedor cargado. Regreso: contenedor vacío.",
+    ];
+    if (selectionRequired) lines.push("Selecciona una ruta oficial para cada sentido antes de calcular el total.");
+    if (totales) lines.push(`Totales: ${Object.entries(totales).map(([k, v]) => `${k}: ${fmtCOP(v) || v}`).join(" | ")}`);
+
+    return {
+      input,
+      meta: {
+        origen: ida?.origen ?? requestedRoute?.origen ?? null,
+        destino: ida?.destino ?? requestedRoute?.destino ?? null,
+        configuracion: ida?.configuracion ?? requestedRoute?.vehiculo ?? null,
+        mes: ida?.mes ?? null,
+        carroceria: ida?.carroceria ?? requestedRoute?.carroceria ?? null,
+        modo_viaje: "CARGADO",
+        tipo_contenedor: "CARGADO",
+        viaje_redondo: true,
+        valor_plaza_no_aplica: data?.valor_plaza_regreso_no_aplica ?? null,
+      },
+      routes,
+      selection_required: selectionRequired,
+      route_options: { ida: routeOptions(ida), regreso: routeOptions(regreso) },
+      texto: lines.join("\n"),
+    };
+  }
+
   const base = data?.SICETAC || data;
   const configuracion =
     base?.configuracion ||
@@ -211,6 +277,9 @@ function buildNormalized(data, input, requestedRoute) {
       mes: base?.mes ?? null,
       carroceria: base?.carroceria ?? null,
       modo_viaje: data?.MODO_VIAJE || data?.modo_viaje || null,
+      tipo_contenedor: data?.tipo_contenedor || base?.tipo_contenedor || null,
+      viaje_redondo: Boolean(data?.viaje_redondo || String(data?.tipo_consulta || "").startsWith("VIAJE_REDONDO")),
+      valor_plaza_no_aplica: data?.valor_plaza_no_aplica || base?.valor_plaza_no_aplica || null,
     },
     routes,
     texto: lines.join("\n"),
@@ -313,15 +382,53 @@ export async function POST(req) {
       { status: 400 }
     );
   }
+  if (!TRIP_MODES.has(input.modo_viaje)) {
+    return Response.json({ error: "Condición de viaje inválida. Usa CARGADO o VACIO." }, { status: 400 });
+  }
+  if (input.tipo_contenedor && input.carroceria !== "Portacontenedores") {
+    return Response.json(
+      { error: "El tipo de contenedor solo aplica con carrocería Portacontenedores." },
+      { status: 400 }
+    );
+  }
+  if (input.tipo_contenedor && !CONTAINER_TYPES.has(input.tipo_contenedor)) {
+    return Response.json({ error: "Tipo de contenedor inválido. Usa CARGADO o VACIO." }, { status: 400 });
+  }
+  if (input.viaje_redondo && input.modo_viaje !== "CARGADO") {
+    return Response.json(
+      { error: "El viaje redondo con contenedor vacío inicia con un viaje cargado." },
+      { status: 400 }
+    );
+  }
+  if (input.viaje_redondo && input.carroceria !== "Portacontenedores") {
+    return Response.json(
+      { error: "El viaje redondo con regreso de contenedor vacío requiere carrocería Portacontenedores." },
+      { status: 400 }
+    );
+  }
+  if (input.viaje_redondo && input.tipo_contenedor_regreso !== "VACIO") {
+    return Response.json(
+      { error: "El regreso del viaje redondo debe indicar contenedor vacío." },
+      { status: 400 }
+    );
+  }
 
   const requestPayload = {
     origen: input.origen,
     destino: input.destino,
     vehiculo: input.vehiculo,
     carroceria: input.carroceria,
+    modo_viaje: input.modo_viaje,
     resumen: input.resumen,
     peajes: input.peajes,
   };
+  if (input.tipo_contenedor) requestPayload.tipo_contenedor = input.tipo_contenedor;
+  if (input.viaje_redondo) {
+    requestPayload.viaje_redondo = true;
+    requestPayload.tipo_contenedor_regreso = input.tipo_contenedor_regreso;
+  }
+  if (input.rutasid_ida) requestPayload.rutasid_ida = input.rutasid_ida;
+  if (input.rutasid_regreso) requestPayload.rutasid_regreso = input.rutasid_regreso;
 
   const res = await fetch(resolveApiUrl(), {
     method: "POST",

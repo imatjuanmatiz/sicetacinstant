@@ -53,6 +53,10 @@ export default function Page() {
   const [destino, setDestino] = useState("");
   const [vehiculo, setVehiculo] = useState("C3S3");
   const [carroceria, setCarroceria] = useState(BODY_TYPE_OPTIONS[0]);
+  const [modoViaje, setModoViaje] = useState("CARGADO");
+  const [tipoContenedor, setTipoContenedor] = useState("CARGADO");
+  const [viajeRedondo, setViajeRedondo] = useState(false);
+  const [rutasSeleccionadas, setRutasSeleccionadas] = useState({ ida: "", regreso: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
@@ -64,6 +68,8 @@ export default function Page() {
     setResult(null);
 
     try {
+      const esPortacontenedores = carroceria === "Portacontenedores";
+      const esViajeRedondoContenedor = esPortacontenedores && modoViaje === "CARGADO" && viajeRedondo;
       const res = await fetch("/api/route", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -72,6 +78,12 @@ export default function Page() {
           destino,
           vehiculo,
           carroceria,
+          modo_viaje: modoViaje,
+          tipo_contenedor: esPortacontenedores && modoViaje === "CARGADO" ? tipoContenedor : null,
+          viaje_redondo: esViajeRedondoContenedor,
+          tipo_contenedor_regreso: esViajeRedondoContenedor ? "VACIO" : null,
+          rutasid_ida: esViajeRedondoContenedor ? rutasSeleccionadas.ida || null : null,
+          rutasid_regreso: esViajeRedondoContenedor ? rutasSeleccionadas.regreso || null : null,
           resumen: true,
           peajes: true,
         }),
@@ -185,7 +197,8 @@ export default function Page() {
             <h2 className="form-title">Busca una ruta SICETAC.</h2>
             <p className="support-copy">
               Este flujo consulta la ruta con origen y destino separados y aplica la configuracion de vehiculo y
-              carroceria seleccionada para entregar una salida resumida.
+              carroceria seleccionada para entregar una salida resumida. “Vacío” en la condición significa vehículo
+              sin mercancía ni contenedor; el contenedor vacío se elige aparte dentro de Portacontenedores.
             </p>
 
             <form className="lab-form" onSubmit={onSubmit}>
@@ -222,6 +235,22 @@ export default function Page() {
                     ))}
                   </select>
                 </div>
+                <div className="field field-full">
+                  <label htmlFor="modo-viaje">Condición del viaje</label>
+                  <select
+                    id="modo-viaje"
+                    name="modo-viaje"
+                    value={modoViaje}
+                    onChange={(e) => {
+                      const modo = e.target.value;
+                      setModoViaje(modo);
+                      if (modo === "VACIO") setViajeRedondo(false);
+                    }}
+                  >
+                    <option value="CARGADO">Cargado</option>
+                    <option value="VACIO">Vacío (sin mercancía ni contenedor)</option>
+                  </select>
+                </div>
               </div>
 
               <div className="section-card">
@@ -234,13 +263,49 @@ export default function Page() {
                     <button
                       key={c}
                       type="button"
-                      onClick={() => setCarroceria(c)}
+                      onClick={() => {
+                        setCarroceria(c);
+                        if (c !== "Portacontenedores") setTipoContenedor("CARGADO");
+                      }}
                       className={`carroceria-chip ${carroceria === c ? "active" : ""}`}
                     >
                       {c}
                     </button>
                   ))}
                 </div>
+                {carroceria === "Portacontenedores" && modoViaje === "CARGADO" ? (
+                  <>
+                    <div className="field" style={{ marginTop: 16 }}>
+                    <label htmlFor="tipo-contenedor">Tipo de carga</label>
+                    <select
+                      id="tipo-contenedor"
+                      name="tipo-contenedor"
+                      value={tipoContenedor}
+                      onChange={(e) => setTipoContenedor(e.target.value)}
+                    >
+                      <option value="CARGADO">Contenedor cargado</option>
+                      <option value="VACIO">Contenedor vacío</option>
+                    </select>
+                    <p className="support-copy">
+                      El contenedor vacío se consulta como viaje cargado y no tiene valor en plaza.
+                    </p>
+                    </div>
+                    <label className="field" style={{ marginTop: 8 }}>
+                      <span>Tipo de recorrido</span>
+                      <select
+                        value={viajeRedondo ? "REDONDO" : "SENCILLO"}
+                        onChange={(e) => {
+                          const redondo = e.target.value === "REDONDO";
+                          setViajeRedondo(redondo);
+                          if (!redondo) setRutasSeleccionadas({ ida: "", regreso: "" });
+                        }}
+                      >
+                        <option value="SENCILLO">Viaje sencillo</option>
+                        <option value="REDONDO">Viaje redondo: regreso con contenedor vacío</option>
+                      </select>
+                    </label>
+                  </>
+                ) : null}
               </div>
 
               <button className="submit-button" type="submit" disabled={loading}>
@@ -281,7 +346,70 @@ export default function Page() {
                       <strong>{result.normalized.meta?.carroceria || carroceria}</strong>
                       <span>Carroceria</span>
                     </div>
+                    {result.normalized.meta?.tipo_contenedor ? (
+                      <div className="meta-pill">
+                        <strong>
+                          {result.normalized.meta.tipo_contenedor === "VACIO"
+                            ? "Contenedor vacío"
+                            : "Contenedor cargado"}
+                        </strong>
+                        <span>Tipo de carga</span>
+                      </div>
+                    ) : null}
                   </div>
+
+                  {result.normalized.meta?.valor_plaza_no_aplica === "CONTENEDOR_VACIO" ? (
+                    <div className="summary-box" style={{ marginTop: 16 }}>
+                      <strong>Contenedor vacío transportado.</strong> Se calculó como viaje cargado; el valor en plaza
+                      no aplica para esta referencia.
+                    </div>
+                  ) : null}
+
+                  {result.normalized.selection_required ? (
+                    <div className="section-card" style={{ marginTop: 16 }}>
+                      <strong>Selecciona las rutas oficiales para calcular el viaje redondo.</strong>
+                      <p className="support-copy">
+                        La ida usa contenedor cargado y el regreso usa contenedor vacío. No se mezclan corredores.
+                      </p>
+                      <div className="field-grid" style={{ marginTop: 12 }}>
+                        <div className="field">
+                          <label htmlFor="ruta-ida">Ruta de ida</label>
+                          <select
+                            id="ruta-ida"
+                            value={rutasSeleccionadas.ida}
+                            onChange={(e) => setRutasSeleccionadas((actual) => ({ ...actual, ida: e.target.value }))}
+                          >
+                            <option value="">Elige una ruta</option>
+                            {(result.normalized.route_options?.ida || []).map((ruta) => (
+                              <option key={ruta.id} value={ruta.id}>{`${ruta.id} · ${ruta.nombre}`}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="field">
+                          <label htmlFor="ruta-regreso">Ruta de regreso</label>
+                          <select
+                            id="ruta-regreso"
+                            value={rutasSeleccionadas.regreso}
+                            onChange={(e) => setRutasSeleccionadas((actual) => ({ ...actual, regreso: e.target.value }))}
+                          >
+                            <option value="">Elige una ruta</option>
+                            {(result.normalized.route_options?.regreso || []).map((ruta) => (
+                              <option key={ruta.id} value={ruta.id}>{`${ruta.id} · ${ruta.nombre}`}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <button
+                        className="submit-button"
+                        type="button"
+                        style={{ marginTop: 14 }}
+                        disabled={loading || !rutasSeleccionadas.ida || !rutasSeleccionadas.regreso}
+                        onClick={onSubmit}
+                      >
+                        Calcular viaje redondo
+                      </button>
+                    </div>
+                  ) : null}
 
                   <div style={{ display: "grid", gap: 14, marginTop: 16 }}>
                     {Array.isArray(result.normalized.routes) && result.normalized.routes.length > 0 ? (
