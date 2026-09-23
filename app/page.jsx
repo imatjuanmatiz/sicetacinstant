@@ -72,7 +72,7 @@ function ModelDetail({ detail }) {
         <thead><tr><th>Terreno</th><th>Km</th><th>Galones</th><th>Combustible</th></tr></thead>
         <tbody>{Object.entries(data.detalle_consumo.por_terreno).map(([terreno, row]) => <tr key={terreno}><td>{terreno}</td><td>{number(row.km)}</td><td>{number(row.gal)}</td><td>{cop(row.costo_combustible)}</td></tr>)}</tbody>
       </table></div>
-      <p><strong>Total: {number(c.total_galones)} galones · {cop(c.combustible)}</strong></p>
+      <p><strong>Consumo total: {number(c.total_galones)} galones · Combustible: {cop(c.combustible)}</strong></p>
     </> : <>
       <p>Galones: {number(c.total_galones)} · Recorrido: {number(c.horas_recorrido)} h · Logística: {number(c.horas_logisticas)} h · Rotaciones al mes: {number(c.rotaciones_calculadas)}</p>
       <dl style={{ lineHeight: 1.8 }}>
@@ -84,10 +84,9 @@ function ModelDetail({ detail }) {
         <dt>Imprevistos incluidos</dt><dd>{cop(c.imprevistos)}</dd>
         <dt>Otros costos</dt><dd>{cop(c.otros_costos)}</dd>
       </dl>
-      <p><strong>Total del modelo: {cop(c.total_viaje)}</strong></p>
       <p>Costo fijo mensual: {cop(c.costo_fijo_mensual)}, vigente desde {c.mes_costo_fijo}.</p>
     </>}
-    <p>Calculado con el modelo completo para esta ruta y configuración.</p>
+    <p>Desglose calculado con el modelo completo para esta ruta y configuración.</p>
   </section>;
 }
 
