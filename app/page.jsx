@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { BODY_TYPE_OPTIONS, VEHICLE_OPTIONS } from "./lib/sicetac-options";
 
-function RouteCard({ route, index, total }) {
+function RouteCard({ route, index, total, onDetail, detailLoading }) {
   const totalesPorHoras = route.totales_por_horas_cop || route.totales_por_horas;
 
   return (
@@ -14,7 +14,9 @@ function RouteCard({ route, index, total }) {
         <span className="route-index">{total > 1 ? `Opcion ${index + 1}` : "Resultado"}</span>
       </div>
 
+      {route.estimado && <p><strong>Valor estimado:</strong> recorrido urbano de 30 km en terreno ondulado; peajes $0.</p>}
       <div className="route-grid">
+        {route.total_km != null && <div className="route-stat"><span>Distancia</span><strong>{route.total_km} km</strong></div>}
         {route.id_sice ? (
           <div className="route-stat">
             <span>ID SICE</span>
@@ -44,8 +46,46 @@ function RouteCard({ route, index, total }) {
           </div>
         ) : null}
       </div>
+      {onDetail && <div style={{ display: "flex", gap: 12, marginTop: 14 }}>
+        <button type="button" className="submit-button" disabled={detailLoading} onClick={() => onDetail(route, "costos")}>Detalle de costos</button>
+        <button type="button" className="submit-button" disabled={detailLoading} onClick={() => onDetail(route, "consumo")}>Detalle de consumo</button>
+      </div>}
     </section>
   );
+}
+
+const cop = (value) => new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(value);
+const number = (value) => new Intl.NumberFormat("es-CO", { maximumFractionDigits: 2 }).format(value);
+
+function ModelDetail({ detail }) {
+  const { data, tipo } = detail;
+  const c = data.detalle_costos;
+  return <section className="section-card" style={{ marginTop: 16 }} aria-live="polite">
+    <h3>Detalle de {tipo}</h3>
+    <p>{data.origen} a {data.destino} · {data.configuracion} · {data.carroceria} · {data.total_km} km · {data.mes}</p>
+    {data.estimado && <p><strong>Valor estimado: 30 km en terreno ondulado; peajes $0.</strong></p>}
+    {tipo === "consumo" ? <>
+      <div style={{ overflowX: "auto" }}><table style={{ width: "100%", textAlign: "left", lineHeight: 2 }}>
+        <thead><tr><th>Terreno</th><th>Km</th><th>Galones</th><th>Combustible</th></tr></thead>
+        <tbody>{Object.entries(data.detalle_consumo.por_terreno).map(([terreno, row]) => <tr key={terreno}><td>{terreno}</td><td>{number(row.km)}</td><td>{number(row.gal)}</td><td>{cop(row.costo_combustible)}</td></tr>)}</tbody>
+      </table></div>
+      <p><strong>Total: {number(c.total_galones)} galones · {cop(c.combustible)}</strong></p>
+    </> : <>
+      <p>Galones: {number(c.total_galones)} · Recorrido: {number(c.horas_recorrido)} h · Logística: {number(c.horas_logisticas)} h · Rotaciones al mes: {number(c.rotaciones_calculadas)}</p>
+      <dl style={{ lineHeight: 1.8 }}>
+        <dt>Costos fijos del viaje</dt><dd>{cop(c.costo_fijo)}</dd>
+        <dt>Costos variables</dt><dd>{cop(c.costos_variables)}</dd>
+        <dt>Combustible incluido</dt><dd>{cop(c.combustible)}</dd>
+        <dt>Peajes incluidos</dt><dd>{cop(c.peajes)}</dd>
+        <dt>Mantenimiento e insumos incluidos</dt><dd>{cop(c.mantenimiento)}</dd>
+        <dt>Imprevistos incluidos</dt><dd>{cop(c.imprevistos)}</dd>
+        <dt>Otros costos</dt><dd>{cop(c.otros_costos)}</dd>
+      </dl>
+      <p><strong>Total del modelo: {cop(c.total_viaje)}</strong></p>
+      <p>Costo fijo mensual: {cop(c.costo_fijo_mensual)}, vigente desde {c.mes_costo_fijo}.</p>
+    </>}
+    <p>Calculado con el modelo completo para esta ruta y configuración.</p>
+  </section>;
 }
 
 export default function Page() {
@@ -60,12 +100,34 @@ export default function Page() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
+  const [detail, setDetail] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState("");
+
+  async function onDetail(route, tipo) {
+    setDetailLoading(true); setDetail(null); setDetailError("");
+    const context = result.diagnostics.request_payload;
+    try {
+      const response = await fetch("/api/route", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...context, rutasid: String(route.id_sice || ""),
+          mes: result.normalized.meta.mes, resumen: false, peajes: false,
+          horas_logisticas: context.horas_logisticas ?? 4,
+          detalle_costos: tipo === "costos", detalle_consumo: tipo === "consumo" }),
+      });
+      const body = await response.json();
+      if (!response.ok || !body.raw?.detalle_costos) throw new Error(body.error || body.detail || "No fue posible calcular el detalle.");
+      setDetail({ tipo, data: body.raw });
+    } catch (error) { setDetailError(error.message || "No fue posible calcular el detalle."); }
+    finally { setDetailLoading(false); }
+  }
+
 
   async function onSubmit(e) {
     e.preventDefault();
     setLoading(true);
     setError("");
-    setResult(null);
+    setResult(null); setDetail(null); setDetailError("");
 
     try {
       const esPortacontenedores = carroceria === "Portacontenedores";
@@ -411,6 +473,9 @@ export default function Page() {
                     </div>
                   ) : null}
 
+                  {detailLoading && <p role="status">Calculando el modelo completo…</p>}
+                  {detailError && <p role="alert">{detailError}</p>}
+                  {detail && <ModelDetail detail={detail} />}
                   <div style={{ display: "grid", gap: 14, marginTop: 16 }}>
                     {Array.isArray(result.normalized.routes) && result.normalized.routes.length > 0 ? (
                       result.normalized.routes.map((route, i) => (
@@ -419,6 +484,8 @@ export default function Page() {
                           route={route}
                           index={i}
                           total={result.normalized.routes.length}
+                          detailLoading={detailLoading || loading}
+                          onDetail={!result.normalized.meta?.viaje_redondo && result.normalized.meta?.tipo_contenedor !== "VACIO" ? onDetail : null}
                         />
                       ))
                     ) : (

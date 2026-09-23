@@ -90,6 +90,11 @@ async function parseInput(req) {
     rutasid_ida: cleanText(body?.rutasid_ida) || null,
     rutasid_regreso: cleanText(body?.rutasid_regreso) || null,
     resumen: parseBoolean(body?.resumen, true),
+    detalle_costos: parseBoolean(body?.detalle_costos, false),
+    detalle_consumo: parseBoolean(body?.detalle_consumo, false),
+    mes: body?.mes ?? null,
+    rutasid: cleanText(body?.rutasid) || null,
+    horas_logisticas: body?.horas_logisticas ?? null,
     peajes: parseBoolean(body?.peajes, true),
     raw_message: message || null,
   };
@@ -136,6 +141,8 @@ function summarizeVariant(variant) {
       variant?.nombre_ruta ||
       "Ruta sin nombre",
     id_sice: variant?.ID_SICE ?? variant?.id_sice ?? null,
+    total_km: asNumber(variant?.total_km),
+    estimado: Boolean(variant?.estimado),
     total_viaje: totalViaje,
     total_viaje_cop: fmtCOP(totalViaje),
     peajes,
@@ -233,7 +240,9 @@ function buildNormalized(data, input, requestedRoute) {
   const singleRoute = base
     ? {
         nombre: data?.NOMBRE_SICE || data?.detalle_lookup?.nombre_sice || "Ruta principal",
-        id_sice: data?.ID_SICE ?? data?.detalle_lookup?.rutasid ?? null,
+        id_sice: data?.rutasid ?? data?.ID_SICE ?? data?.detalle_lookup?.rutasid ?? null,
+        total_km: asNumber(base?.total_km),
+        estimado: Boolean(base?.estimado),
         total_viaje: singleRouteTotal,
         total_viaje_cop: fmtCOP(singleRouteTotal),
         peajes: singleRoutePeajes,
@@ -258,6 +267,8 @@ function buildNormalized(data, input, requestedRoute) {
   routes.forEach((r, idx) => {
     const header = routes.length > 1 ? `Ruta ${idx + 1}` : "Resultado";
     lines.push(`${header}: ${r.nombre}${r.id_sice ? ` (ID SICE ${r.id_sice})` : ""}`);
+    if (r.total_km !== null) lines.push(`- Distancia: ${r.total_km} km`);
+    if (r.estimado) lines.push("VALOR ESTIMADO: 30 km en terreno ondulado; peajes $0.");
     if (r.total_viaje_cop) lines.push(`- Total viaje: ${r.total_viaje_cop}`);
     if (r.peajes_cop) lines.push(`- Peajes: ${r.peajes_cop}`);
     if (r.totales_por_horas && typeof r.totales_por_horas === "object") {
@@ -421,6 +432,11 @@ export async function POST(req) {
     modo_viaje: input.modo_viaje,
     resumen: input.resumen,
     peajes: input.peajes,
+    detalle_costos: input.detalle_costos,
+    detalle_consumo: input.detalle_consumo,
+    mes: input.mes,
+    rutasid: input.rutasid,
+    horas_logisticas: input.horas_logisticas,
   };
   if (input.tipo_contenedor) requestPayload.tipo_contenedor = input.tipo_contenedor;
   if (input.viaje_redondo) {
