@@ -64,6 +64,9 @@ function ModelDetail({ detail }) {
     <h3>Detalle de {tipo}</h3>
     <p>{data.origen} a {data.destino} · {data.configuracion} · {data.carroceria} · {data.total_km} km · {data.mes}</p>
     {data.estimado && <p><strong>Valor estimado: 30 km en terreno ondulado; peajes $0.</strong></p>}
+    {data.sicetac_tradicional?.total_viaje != null && <p><strong>
+      {data.sicetac_tradicional.estimado ? "Total SICETAC estimado" : "Total SICETAC"}: {cop(data.sicetac_tradicional.total_viaje)}
+    </strong> · {number(data.sicetac_tradicional.horas_logisticas)} horas logísticas · {data.sicetac_tradicional.mes}</p>}
     {tipo === "consumo" ? <>
       <div style={{ overflowX: "auto" }}><table style={{ width: "100%", textAlign: "left", lineHeight: 2 }}>
         <thead><tr><th>Terreno</th><th>Km</th><th>Galones</th><th>Combustible</th></tr></thead>
