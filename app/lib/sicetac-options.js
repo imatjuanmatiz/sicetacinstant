@@ -1,4 +1,20 @@
-export const VEHICLE_OPTIONS = ["C278", "C289", "C2910", "C2M10", "C3", "C2S2", "C2S3", "C3S2", "C3S3", "V3"];
+// Catálogo vigente expuesto por la API SICETAC (/opciones/vehiculos).
+// Los códigos C278, C289, C258 y C28105 fueron retirados del catálogo público.
+export const VEHICLE_OPTIONS = [
+  "CA",
+  "C257",
+  "C279",
+  "C2910",
+  "C2M10",
+  "C3",
+  "C2S2",
+  "C2S3",
+  "C3S2",
+  "C3S3",
+  "V2",
+  "V3",
+  "V4",
+];
 
 export const BODY_TYPE_OPTIONS = [
   "General - Estacas",

@@ -379,8 +379,7 @@ export async function POST(req) {
   if (!ALLOWED_VEHICLES.has(input.vehiculo)) {
     return Response.json(
       {
-        error:
-          "Tipo de vehiculo invalido. Valores permitidos: C278, C289, C2910, C2M10, C3, C2S2, C2S3, C3S2, C3S3, V3.",
+        error: `Tipo de vehiculo invalido. Valores permitidos: ${VEHICLE_OPTIONS.join(", ")}.`,
       },
       { status: 400 }
     );
@@ -420,6 +419,12 @@ export async function POST(req) {
   if (input.viaje_redondo && input.tipo_contenedor_regreso !== "VACIO") {
     return Response.json(
       { error: "El regreso del viaje redondo debe indicar contenedor vacío." },
+      { status: 400 }
+    );
+  }
+  if (input.viaje_redondo && input.tipo_contenedor === "VACIO") {
+    return Response.json(
+      { error: "El viaje redondo requiere contenedor cargado en la ida y contenedor vacío en el regreso." },
       { status: 400 }
     );
   }

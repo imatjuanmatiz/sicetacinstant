@@ -37,6 +37,7 @@ URL completa:
 - `origen` (string, requerido)
 - `destino` (string, requerido)
 - `vehiculo` (string, opcional, default recomendado: `C3S3`)
+  - Catálogo vigente: `CA`, `C257`, `C279`, `C2910`, `C2M10`, `C3`, `C2S2`, `C2S3`, `C3S2`, `C3S3`, `V2`, `V3`, `V4`.
 - `carroceria` (string, opcional, default recomendado: `General - Estacas`)
 - `mes` (number, opcional, formato `YYYYMM`)
 - `resumen` (boolean, opcional)
@@ -136,4 +137,3 @@ URL:
 2. Reintentar 1-2 veces ante errores transitorios de red.
 3. Loggear request/response con mascara de datos sensibles.
 4. Versionar contratos de respuesta en el sistema consumidor.
-

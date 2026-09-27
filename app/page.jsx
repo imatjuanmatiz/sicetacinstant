@@ -1,8 +1,25 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { BODY_TYPE_OPTIONS, VEHICLE_OPTIONS } from "./lib/sicetac-options";
+import { routeErrorMessage } from "./lib/route-errors";
+
+const VEHICLE_LABELS = {
+  CA: "Camioneta PBV 3.500–5.000 kg",
+  C257: "Camión 2 ejes liviano PBV 5.001–7.000 kg",
+  C279: "Camión 2 ejes liviano PBV 7.001–9.000 kg",
+  C2910: "Camión 2 ejes liviano PBV 9.001–10.500 kg",
+  C2M10: "Camión 2 ejes PBV mayor a 10.500 kg",
+  C3: "Camión 3 ejes",
+  C2S2: "Tractocamión 2 ejes + semirremolque 2 ejes",
+  C2S3: "Tractocamión 2 ejes + semirremolque 3 ejes",
+  C3S2: "Tractocamión 3 ejes + semirremolque 2 ejes",
+  C3S3: "Tractocamión 3 ejes + semirremolque 3 ejes",
+  V2: "Volqueta 2 ejes",
+  V3: "Volqueta 3 ejes",
+  V4: "Volqueta 4 ejes",
+};
 
 function RouteCard({ route, index, total, onDetail, detailLoading }) {
   const totalesPorHoras = route.totales_por_horas_cop || route.totales_por_horas;
@@ -105,8 +122,21 @@ export default function Page() {
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
+  const requestSequence = useRef(0);
+
+  function invalidateRoute() {
+    requestSequence.current += 1;
+    setRutasSeleccionadas({ ida: "", regreso: "" });
+    setResult(null);
+    setError("");
+    setLoading(false);
+    setDetail(null);
+    setDetailError("");
+    setDetailLoading(false);
+  }
 
   async function onDetail(route, tipo) {
+    const requestId = ++requestSequence.current;
     setDetailLoading(true); setDetail(null); setDetailError("");
     const context = result.diagnostics.request_payload;
     try {
@@ -118,18 +148,23 @@ export default function Page() {
           detalle_costos: tipo === "costos", detalle_consumo: tipo === "consumo" }),
       });
       const body = await response.json();
-      if (!response.ok || !body.raw?.detalle_costos) throw new Error(body.error || body.detail || "No fue posible calcular el detalle.");
+      if (requestId !== requestSequence.current) return;
+      if (!response.ok || !body.raw?.detalle_costos) throw new Error(routeErrorMessage(body, "No fue posible calcular el detalle."));
       setDetail({ tipo, data: body.raw });
-    } catch (error) { setDetailError(error.message || "No fue posible calcular el detalle."); }
-    finally { setDetailLoading(false); }
+    } catch (error) {
+      if (requestId === requestSequence.current) setDetailError(error.message || "No fue posible calcular el detalle.");
+    } finally {
+      if (requestId === requestSequence.current) setDetailLoading(false);
+    }
   }
 
 
   async function onSubmit(e) {
     e.preventDefault();
+    const requestId = ++requestSequence.current;
     setLoading(true);
     setError("");
-    setResult(null); setDetail(null); setDetailError("");
+    setResult(null); setDetail(null); setDetailError(""); setDetailLoading(false);
 
     try {
       const esPortacontenedores = carroceria === "Portacontenedores";
@@ -153,15 +188,16 @@ export default function Page() {
         }),
       });
       const data = await res.json();
+      if (requestId !== requestSequence.current) return;
       if (!res.ok) {
-        setError(data?.error || data?.detail || "No fue posible consultar la ruta.");
+        setError(routeErrorMessage(data));
         return;
       }
       setResult(data || null);
     } catch {
-      setError("Error de red consultando el servicio.");
+      if (requestId === requestSequence.current) setError("Error de red consultando el servicio.");
     } finally {
-      setLoading(false);
+      if (requestId === requestSequence.current) setLoading(false);
     }
   }
 
@@ -275,7 +311,7 @@ export default function Page() {
                     placeholder="Ej. Bogotá"
                     required
                     value={origen}
-                    onChange={(e) => setOrigen(e.target.value)}
+                    onChange={(e) => { invalidateRoute(); setOrigen(e.target.value); }}
                   />
                 </div>
                 <div className="field">
@@ -286,15 +322,15 @@ export default function Page() {
                     placeholder="Ej. Medellín"
                     required
                     value={destino}
-                    onChange={(e) => setDestino(e.target.value)}
+                    onChange={(e) => { invalidateRoute(); setDestino(e.target.value); }}
                   />
                 </div>
                 <div className="field field-full">
                   <label htmlFor="vehiculo">Tipo de vehiculo</label>
-                  <select id="vehiculo" name="vehiculo" value={vehiculo} onChange={(e) => setVehiculo(e.target.value)}>
+                  <select id="vehiculo" name="vehiculo" value={vehiculo} onChange={(e) => { invalidateRoute(); setVehiculo(e.target.value); }}>
                     {VEHICLE_OPTIONS.map((v) => (
                       <option key={v} value={v}>
-                        {v}
+                        {v} — {VEHICLE_LABELS[v]}
                       </option>
                     ))}
                   </select>
@@ -306,6 +342,7 @@ export default function Page() {
                     name="modo-viaje"
                     value={modoViaje}
                     onChange={(e) => {
+                      invalidateRoute();
                       const modo = e.target.value;
                       setModoViaje(modo);
                       if (modo === "VACIO") setViajeRedondo(false);
@@ -328,8 +365,12 @@ export default function Page() {
                       key={c}
                       type="button"
                       onClick={() => {
+                        invalidateRoute();
                         setCarroceria(c);
-                        if (c !== "Portacontenedores") setTipoContenedor("CARGADO");
+                        if (c !== "Portacontenedores") {
+                          setTipoContenedor("CARGADO");
+                          setViajeRedondo(false);
+                        }
                       }}
                       className={`carroceria-chip ${carroceria === c ? "active" : ""}`}
                     >
@@ -345,7 +386,11 @@ export default function Page() {
                       id="tipo-contenedor"
                       name="tipo-contenedor"
                       value={tipoContenedor}
-                      onChange={(e) => setTipoContenedor(e.target.value)}
+                      onChange={(e) => {
+                        invalidateRoute();
+                        setTipoContenedor(e.target.value);
+                        if (e.target.value === "VACIO") setViajeRedondo(false);
+                      }}
                     >
                       <option value="CARGADO">Contenedor cargado</option>
                       <option value="VACIO">Contenedor vacío</option>
@@ -357,11 +402,13 @@ export default function Page() {
                     <label className="field" style={{ marginTop: 8 }}>
                       <span>Tipo de recorrido</span>
                       <select
+                        id="tipo-recorrido"
                         value={viajeRedondo ? "REDONDO" : "SENCILLO"}
                         onChange={(e) => {
+                          invalidateRoute();
                           const redondo = e.target.value === "REDONDO";
                           setViajeRedondo(redondo);
-                          if (!redondo) setRutasSeleccionadas({ ida: "", regreso: "" });
+                          if (redondo) setTipoContenedor("CARGADO");
                         }}
                       >
                         <option value="SENCILLO">Viaje sencillo</option>
